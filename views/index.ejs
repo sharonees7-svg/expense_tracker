@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expense Tracker</title>
+    <!-- Modern Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="background">
+        <div class="blob1"></div>
+        <div class="blob2"></div>
+    </div>
+
+    <div class="container">
+        <!-- Header Section -->
+        <header class="glass-panel main-header">
+            <div class="header-content">
+                <h1><i class="fa-solid fa-wallet"></i> Wallet<span class="highlight">X</span></h1>
+                <p>Track your expenses effortlessly</p>
+            </div>
+            <div class="total-balance">
+                <span class="label">Total Spent</span>
+                <span class="amount">$<%= total.toFixed(2) %></span>
+            </div>
+        </header>
+
+        <!-- Dashboard Section -->
+        <div class="glass-panel dashboard-panel">
+            <div class="panel-header dashboard-header">
+                <h2><i class="fa-solid fa-chart-line"></i> Analytics</h2>
+                <div class="chart-controls">
+                    <button class="btn-filter" data-range="daily">Daily</button>
+                    <button class="btn-filter active" data-range="weekly">Weekly</button>
+                    <button class="btn-filter" data-range="monthly">Monthly</button>
+                </div>
+            </div>
+            <div class="chart-container">
+                <canvas id="expenseChart"></canvas>
+            </div>
+        </div>
+
+        <div class="main-grid">
+            <!-- Left Column: Add Expense & Stats -->
+            <div class="left-col">
+                <div class="glass-panel form-panel hover-card">
+                    <h2><i class="fa-solid fa-plus-circle"></i> New Expense</h2>
+                    <form action="/expenses" method="POST">
+                        <div class="input-group">
+                            <label for="title">Description</label>
+                            <input type="text" id="title" name="title" placeholder="e.g. Morning Coffee" required>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="amount">Amount ($)</label>
+                            <input type="number" id="amount" name="amount" step="0.01" min="0" placeholder="0.00" required>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="input-group half">
+                                <label for="category">Category</label>
+                                <select id="category" name="category">
+                                    <option value="Food">Food & Dining</option>
+                                    <option value="Transport">Transportation</option>
+                                    <option value="Housing">Housing</option>
+                                    <option value="Utilities">Utilities</option>
+                                    <option value="Entertainment">Entertainment</option>
+                                    <option value="Health">Health</option>
+                                    <option value="Other" selected>Other</option>
+                                </select>
+                            </div>
+                            <div class="input-group half">
+                                <label for="date">Date</label>
+                                <input type="date" id="date" name="date" required>
+                            </div>
+                        </div>
+
+                        <button type="submit" class="btn-primary">Add Expense</button>
+                    </form>
+                </div>
+
+                <!-- Category Breakdown -->
+                <% if(Object.keys(categoryTotals).length > 0) { %>
+                <div class="glass-panel breakdown-panel hover-card">
+                    <h2><i class="fa-solid fa-chart-pie"></i> Breakdown</h2>
+                    <ul class="category-list">
+                        <% for(let category in categoryTotals) { %>
+                            <li class="category-item">
+                                <div class="cat-info">
+                                    <span class="cat-name"><%= category %></span>
+                                </div>
+                                <span class="cat-amount">$<%= categoryTotals[category].toFixed(2) %></span>
+                            </li>
+                        <% } %>
+                    </ul>
+                </div>
+                <% } %>
+            </div>
+
+            <!-- Right Column: Transactions List -->
+            <div class="right-col">
+                <div class="glass-panel transactions-panel">
+                    <div class="panel-header">
+                        <h2><i class="fa-solid fa-list"></i> Recent Transactions</h2>
+                    </div>
+                    
+                    <% if (expenses && expenses.length > 0) { %>
+                        <div class="expense-list">
+                            <% expenses.forEach(expense => { %>
+                                <div class="expense-item hover-card">
+                                    <div class="expense-icon <%= expense.category.toLowerCase().replace(' & ', '-') %>">
+                                        <% if (expense.category.includes('Food')) { %>
+                                            <i class="fa-solid fa-utensils"></i>
+                                        <% } else if (expense.category.includes('Transport')) { %>
+                                            <i class="fa-solid fa-car"></i>
+                                        <% } else if (expense.category.includes('Housing')) { %>
+                                            <i class="fa-solid fa-house"></i>
+                                        <% } else if (expense.category.includes('Utilities')) { %>
+                                            <i class="fa-solid fa-bolt"></i>
+                                        <% } else if (expense.category.includes('Entertainment')) { %>
+                                            <i class="fa-solid fa-film"></i>
+                                        <% } else if (expense.category.includes('Health')) { %>
+                                            <i class="fa-solid fa-heart-pulse"></i>
+                                        <% } else { %>
+                                            <i class="fa-solid fa-box"></i>
+                                        <% } %>
+                                    </div>
+                                    <div class="expense-details">
+                                        <h3><%= expense.title %></h3>
+                                        <p class="category-badge"><%= expense.category %></p>
+                                    </div>
+                                    <div class="expense-meta">
+                                        <span class="amount">-$<%= expense.amount.toFixed(2) %></span>
+                                        <span class="date"><%= new Date(expense.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) %></span>
+                                    </div>
+                                    <div class="expense-actions">
+                                        <form action="/expenses/<%= expense.id %>?_method=DELETE" method="POST">
+                                            <button type="submit" class="btn-delete" title="Delete"><i class="fa-solid fa-trash"></i></button>
+                                        </form>
+                                    </div>
+                                </div>
+                            <% }) %>
+                        </div>
+                    <% } else { %>
+                        <div class="empty-state">
+                            <i class="fa-solid fa-receipt"></i>
+                            <p>No expenses yet. Add one to get started!</p>
+                        </div>
+                    <% } %>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Set today's date automatically
+        document.getElementById('date').valueAsDate = new Date();
+
+        // Chart Logic
+        const rawExpenses = <%- JSON.stringify(expenses) %>;
+        const ctx = document.getElementById('expenseChart').getContext('2d');
+        
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.font.family = "'Inter', sans-serif";
+
+        let expenseChart = null;
+
+        const processChartData = (range) => {
+            const now = new Date();
+            const labels = [];
+            const data = [];
+            
+            if (range === 'daily') {
+                // Last 7 days
+                const sums = {};
+                for (let i = 6; i >= 0; i--) {
+                    const d = new Date(now);
+                    d.setDate(d.getDate() - i);
+                    const dateStr = d.toISOString().split('T')[0];
+                    sums[dateStr] = 0;
+                    labels.push(d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric'}));
+                    data.push(dateStr);
+                }
+                
+                rawExpenses.forEach(exp => {
+                    const expDate = new Date(exp.date).toISOString().split('T')[0];
+                    if (sums[expDate] !== undefined) {
+                        sums[expDate] += parseFloat(exp.amount);
+                    }
+                });
+                
+                return { 
+                    labels, 
+                    data: data.map(dateStr => sums[dateStr]) 
+                };
+            } 
+            else if (range === 'weekly') {
+                // Last 4 weeks
+                const sums = [0, 0, 0, 0];
+                labels.push('3 Weeks Ago', '2 Weeks Ago', 'Last Week', 'This Week');
+                
+                const oneWeek = 7 * 24 * 60 * 60 * 1000;
+                rawExpenses.forEach(exp => {
+                    const expDate = new Date(exp.date);
+                    const diffTime = Math.abs(now - expDate);
+                    const diffWeeks = Math.floor(diffTime / oneWeek);
+                    
+                    if (diffWeeks < 4) {
+                        sums[3 - diffWeeks] += parseFloat(exp.amount);
+                    }
+                });
+                
+                return { labels, data: sums };
+            }
+            else if (range === 'monthly') {
+                // Last 6 months
+                const sums = {};
+                for (let i = 5; i >= 0; i--) {
+                    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                    const monthStr = d.toISOString().substring(0, 7); // YYYY-MM
+                    sums[monthStr] = 0;
+                    labels.push(d.toLocaleDateString('en-US', { month: 'short', year: 'numeric'}));
+                    data.push(monthStr);
+                }
+
+                rawExpenses.forEach(exp => {
+                    const expMonth = exp.date.substring(0, 7);
+                    if (sums[expMonth] !== undefined) {
+                        sums[expMonth] += parseFloat(exp.amount);
+                    }
+                });
+
+                return {
+                    labels,
+                    data: data.map(mStr => sums[mStr])
+                };
+            }
+        };
+
+        const updateChart = (range) => {
+            const chartData = processChartData(range);
+            
+            if (expenseChart) {
+                expenseChart.destroy();
+            }
+
+            const gradient = ctx.createLinearGradient(0, 0, 0, 400);
+            gradient.addColorStop(0, 'rgba(59, 130, 246, 0.5)');
+            gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
+
+            expenseChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: chartData.labels,
+                    datasets: [{
+                        label: 'Total Expenses ($)',
+                        data: chartData.data,
+                        borderColor: '#3b82f6',
+                        backgroundColor: gradient,
+                        borderWidth: 3,
+                        pointBackgroundColor: '#8b5cf6',
+                        pointBorderColor: '#fff',
+                        pointHoverBackgroundColor: '#fff',
+                        pointHoverBorderColor: '#8b5cf6',
+                        pointRadius: 5,
+                        pointHoverRadius: 7,
+                        fill: true,
+                        tension: 0.4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        },
+                        tooltip: {
+                            backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                            titleColor: '#fff',
+                            bodyColor: '#fff',
+                            padding: 12,
+                            borderColor: 'rgba(255,255,255,0.1)',
+                            borderWidth: 1,
+                            displayColors: false,
+                            callbacks: {
+                                label: function(context) {
+                                    return '$' + context.parsed.y.toFixed(2);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value;
+                                }
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false,
+                                drawBorder: false
+                            }
+                        }
+                    },
+                    interaction: {
+                        intersect: false,
+                        mode: 'index',
+                    },
+                }
+            });
+        };
+
+        // Initialize
+        updateChart('weekly');
+
+        // Setup filter buttons
+        document.querySelectorAll('.btn-filter').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.btn-filter').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                updateChart(e.target.dataset.range);
+            });
+        });
+    </script>
+</body>
+</html>
