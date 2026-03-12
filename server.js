@@ -2,7 +2,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const methodOverride = require('method-override');
-const { v4: uuidv4 } = require('uuid');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -61,7 +61,7 @@ app.post('/expenses', (req, res) => {
     
     if (title && amount) {
         const newExpense = {
-            id: uuidv4(),
+            id: crypto.randomUUID(),
             title,
             amount: parseFloat(amount),
             category: category || 'Other',
